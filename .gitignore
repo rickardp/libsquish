@@ -1,0 +1,5 @@
+*.opendb
+*.idb
+*.lib
+*.exe
+*.sdf

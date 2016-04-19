@@ -36,6 +36,7 @@
 #include <cmath>
 #include <cfloat>
 #include <cstdlib>
+#include <algorithm>
 
 using namespace squish;
 
