@@ -1,3 +1,8 @@
+libsquish
+---------
+
+Fork of libsquish that adds VS2015 compatibility, and support for both RGBA and BGRA input.
+
 LICENSE
 -------
 

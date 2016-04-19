@@ -35,6 +35,11 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
 	bool isDxt1 = ( ( flags & kDxt1 ) != 0 );
 	bool weightByAlpha = ( ( flags & kWeightColourByAlpha ) != 0 );
 
+	int RI = (flags & kInputBgra) ? 2 : 0;
+	const int GI = 1;
+	int BI = (flags & kInputBgra) ? 0 : 2;
+	const int AI = 3;
+
 	// create the minimal set
 	for( int i = 0; i < 16; ++i )
 	{
@@ -61,12 +66,12 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
 			if( j == i )
 			{
 				// normalise coordinates to [0,1]
-				float x = ( float )rgba[4*i] / 255.0f;
-				float y = ( float )rgba[4*i + 1] / 255.0f;
-				float z = ( float )rgba[4*i + 2] / 255.0f;
+				float x = ( float )rgba[4*i + RI] / 255.0f;
+				float y = ( float )rgba[4*i + GI] / 255.0f;
+				float z = ( float )rgba[4*i + BI] / 255.0f;
 				
 				// ensure there is always non-zero weight even for zero alpha
-				float w = ( float )( rgba[4*i + 3] + 1 ) / 256.0f;
+				float w = ( float )( rgba[4*i + AI] + 1 ) / 256.0f;
 
 				// add the point
 				m_points[m_count] = Vec3( x, y, z );
@@ -81,17 +86,17 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
 			// check for a match
 			int oldbit = 1 << j;
 			bool match = ( ( mask & oldbit ) != 0 )
-				&& ( rgba[4*i] == rgba[4*j] )
-				&& ( rgba[4*i + 1] == rgba[4*j + 1] )
-				&& ( rgba[4*i + 2] == rgba[4*j + 2] )
-				&& ( rgba[4*j + 3] >= 128 || !isDxt1 );
+				&& ( rgba[4*i + RI] == rgba[4*j + RI] )
+				&& ( rgba[4*i + GI] == rgba[4*j + GI] )
+				&& ( rgba[4*i + BI] == rgba[4*j + BI] )
+				&& ( rgba[4*j + AI] >= 128 || !isDxt1 );
 			if( match )
 			{
 				// get the index of the match
 				int index = m_remap[j];
 				
 				// ensure there is always non-zero weight even for zero alpha
-				float w = ( float )( rgba[4*i + 3] + 1 ) / 256.0f;
+				float w = ( float )( rgba[4*i + AI] + 1 ) / 256.0f;
 
 				// map to this point and increase the weight
 				m_weights[index] += ( weightByAlpha ? w : 1.0f );

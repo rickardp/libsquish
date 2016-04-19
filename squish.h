@@ -57,7 +57,9 @@ enum
 	kColourRangeFit	= ( 1 << 4 ),
 	
 	//! Weight the colour by alpha during cluster fit (disabled by default).
-	kWeightColourByAlpha = ( 1 << 7 )
+	kWeightColourByAlpha = ( 1 << 7 ),
+
+	kInputBgra = (1 << 10)
 };
 
 // -----------------------------------------------------------------------------

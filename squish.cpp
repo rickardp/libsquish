@@ -39,7 +39,7 @@ static int FixFlags( int flags )
 	// grab the flag bits
 	int method = flags & ( kDxt1 | kDxt3 | kDxt5 );
 	int fit = flags & ( kColourIterativeClusterFit | kColourClusterFit | kColourRangeFit );
-	int extra = flags & kWeightColourByAlpha;
+	int extra = flags & (kWeightColourByAlpha | kInputBgra);
 	
 	// set defaults
 	if( method != kDxt3 && method != kDxt5 )
@@ -140,7 +140,7 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
 		{
 			// build the 4x4 block of pixels
 			u8 sourceRgba[16*4];
-			u8* targetPixel = sourceRgba;
+			uint32_t* targetPixel = reinterpret_cast<uint32_t*>(sourceRgba);
 			int mask = 0;
 			for( int py = 0; py < 4; ++py )
 			{
@@ -154,9 +154,8 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
 					if( sx < width && sy < height )
 					{
 						// copy the rgba value
-						u8 const* sourcePixel = rgba + 4*( width*sy + sx );
-						for( int i = 0; i < 4; ++i )
-							*targetPixel++ = *sourcePixel++;
+						uint32_t const* sourcePixel = reinterpret_cast<uint32_t const*>(rgba + 4 * (width*sy + sx));
+						*targetPixel++ = *sourcePixel;
 							
 						// enable this pixel
 						mask |= ( 1 << ( 4*py + px ) );
@@ -164,7 +163,7 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
 					else
 					{
 						// skip this pixel as its outside the image
-						targetPixel += 4;
+						++targetPixel;
 					}
 				}
 			}
