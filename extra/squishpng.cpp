@@ -46,6 +46,8 @@
 #pragma warning( disable: 4511 4512 )
 #endif // def _MSC_VER
 
+#include "squishpng.h"
+
 using namespace squish;
 
 //! Simple exception class.
@@ -59,38 +61,6 @@ public:
 	
 private:
 	std::string m_excuse;
-};
-
-//! Base class to make derived classes non-copyable
-class NonCopyable
-{
-public:
-	NonCopyable() {}
-	
-private:
-	NonCopyable( NonCopyable const& );
-	NonCopyable& operator=( NonCopyable const& );
-};
-
-//! Memory object.
-class Mem : NonCopyable
-{
-public:
-	Mem() : m_p( 0 ) {}
-	explicit Mem( int size ) : m_p( new u8[size] ) {}
-	~Mem() { delete[] m_p; }
-
-	void Reset( int size )
-	{
-		u8 *p = new u8[size];
-		delete m_p;
-		m_p = p;
-	}
-	
-	u8* Get() const { return m_p; }
-	
-private:
-	u8* m_p;
 };
 
 //! File object.
@@ -205,45 +175,26 @@ private:
 	int m_height;
 };
 
-//! Represents a DXT compressed image in memory.
-struct DxtData
-{
-	int width;
-	int height;
-	int format;		//!< Either kDxt1, kDxt3 or kDxt5.
-	Mem data;
-	bool isColour;
-	bool isAlpha;
-};
-
-//! Represents an uncompressed RGBA image in memory.
-class Image
-{
-public:
-	Image();
-
-	void LoadPng( std::string const& fileName );
-	void SavePng( std::string const& fileName ) const;
-
-	void Decompress( DxtData const& dxt );
-	void Compress( DxtData& dxt, int flags ) const;
-
-	double GetRmsError( Image const& image ) const;
-
-private:
-	int m_width;
-	int m_height;
-	bool m_isColour;	//!< Either colour or luminance.
-	bool m_isAlpha;		//!< Either alpha or not.
-	Mem m_pixels;
-};
-
 Image::Image() 
   : m_width( 0 ), 
   	m_height( 0 ),
 	m_isColour( false ),
 	m_isAlpha( false )
 {
+}
+
+// Needed since the stdio of libpng is not always compatible
+static void fread_wrapper(png_struct* png_ptr, png_byte* data, png_size_t length)
+{
+	png_size_t check;
+
+	if (png_ptr == NULL)
+		return;
+	auto iop = png_get_io_ptr(png_ptr);
+	check = fread(data, 1, length, (FILE*)iop);
+
+	if (check != length)
+		png_error(png_ptr, "Read Error");
 }
 
 void Image::LoadPng( std::string const& fileName )
@@ -268,10 +219,10 @@ void Image::LoadPng( std::string const& fileName )
 		oss << "\"" << fileName << "\" does not look like a png file";
 		throw Error( oss.str() );
 	}
-	
 	// read the image into memory
 	PngReadStruct png;
-	png_init_io( png.GetPng(), file.Get() );
+	png_init_io(png.GetPng(), file.Get());
+	png_set_read_fn(png.GetPng(), file.Get(), fread_wrapper);
 	png_set_sig_bytes( png.GetPng(), 8 );
 	png_read_png( png.GetPng(), png.GetInfo(), PNG_TRANSFORM_EXPAND, 0 );
 
@@ -441,6 +392,8 @@ double Image::GetRmsError( Image const& image ) const
 	return std::sqrt( difference/( double )( m_width*m_height ) );
 }
 
+#ifndef SQUISHTEST
+
 int main( int argc, char* argv[] )
 {
 	try
@@ -544,3 +497,5 @@ int main( int argc, char* argv[] )
 	// done
 	return 0;
 }
+
+#endif

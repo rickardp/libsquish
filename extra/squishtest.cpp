@@ -36,9 +36,24 @@
 #include <cmath>
 #include <cfloat>
 #include <cstdlib>
+#ifdef _WIN32
+#include <windows.h>
+#undef min
+#undef max
+#define PERF(x) {LARGE_INTEGER t0, t1, f; \
+  QueryPerformanceFrequency(&f); \
+  QueryPerformanceCounter(&t0); \
+  { x; } \
+  QueryPerformanceCounter(&t1); \
+  printf("%s: %.1f ms\n", #x, (double)((t1.QuadPart-t0.QuadPart) * 1000.0 / f.QuadPart)); }
+#else
+#define PERF(x) {x;}
+#endif
 #include <algorithm>
+#include "squishpng.h"
 
 using namespace squish;
+
 
 double GetColourError( u8 const* a, u8 const* b )
 {
@@ -198,10 +213,32 @@ void TestTwoColour( int flags )
 	std::cout << "two colour error (min, max, avg): " 
 		<< min << ", " << max << ", " << avg << std::endl;
 }
-
-int main()
+void TestPng(const char* pngFile, int flags)
 {
-	TestOneColourRandom( kDxt1 | kColourRangeFit );
-	TestOneColour( kDxt1 );
-	TestTwoColour( kDxt1 );
+	Image img, img2;
+	DxtData data;
+	img.LoadPng(pngFile);
+	img.Compress(data, flags);
+	img2.Decompress(data);
+
+	// show stats
+	std::cout << "PNG " << pngFile << " colour error RMS: "
+		<< img.GetRmsError(img2) << std::endl;
 }
+
+int main(int argc, char** argv)
+{
+	PERF(TestOneColourRandom(kDxt1 | kColourRangeFit));
+	PERF(TestOneColour( kDxt1 ));
+	PERF(TestTwoColour( kDxt1 ));
+	for (int i = 1; i < argc; ++i) {
+		
+		PERF(TestPng(argv[i], kDxt1 | kWeightColourByAlpha));
+		PERF(TestPng(argv[i], kDxt5));
+		PERF(TestPng(argv[i], kDxt1 | kWeightColourByAlpha | kColourRangeFit));
+		PERF(TestPng(argv[i], kDxt5 | kColourRangeFit | kInputBgra));
+		PERF(TestPng(argv[i], kDxt1 | kWeightColourByAlpha | kColourIterativeClusterFit));
+		PERF(TestPng(argv[i], kDxt5 | kColourIterativeClusterFit));
+	}
+}
+
